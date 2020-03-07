@@ -681,11 +681,12 @@ def post_sale(curr_email):
                 print("Invalid reserved price length or non-digit.")
                 rprice = input("Reserved Price (Use empty input for none): ")
 
-        rprice = int(rprice)
+        
                 
         # for empty input
         if (len(rprice) == 0):
-                rprice = 0
+                rprice = "0"
+        rprice = int(rprice)
 
         # set lister to current email 
         lister = curr_email
