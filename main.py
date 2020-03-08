@@ -6,10 +6,8 @@ from datetime import datetime # only used to validate date input, source 3
 
 '''
 to do
-- find better way to display results
 - improve sql queries to be simpler 
 - improve sql query for system option 2 (task 2 on spec) to not have to remove NULL entries
-- reduce repetitive code with more helper functions
 - increase domain size of bid and rid with better randomization method
 - try to find ways to break inputs or data
 
@@ -23,6 +21,8 @@ sources
 7 -> https://dbader.org/blog/python-check-if-file-exists
 8 -> https://stackoverflow.com/questions/289680/difference-between-2-dates-in-sqlite
 9 -> https://www.sqlitetutorial.net/sqlite-functions/sqlite-ifnull/
+10 -> https://www.programiz.com/python-programming/methods/string/format
+11 -> https://stackoverflow.com/questions/34734572/tabs-in-print-are-not-consistent-python
 '''
 
 # helper: creates an sqlite3 connection from database and returns its connections
@@ -44,10 +44,11 @@ def _existing_value(table, column, value):
         conn, c = _open_sql()
 
         # look for value in specific table and column
-        c.execute(f'''SELECT *
-                      FROM {table}
-                      WHERE {column} LIKE '{value}';
-                      ''')
+        query = '''SELECT *
+                   FROM {}
+                   WHERE {} LIKE '{}';
+                   '''.format(table, column, value)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -62,6 +63,7 @@ def _get_menu_option(num_options):
         # gets option and loops until valid
         option = _verify_option(input("\nChoose option: "), num_options)
         while (not option):
+                print("Invalid option range.");
                 option = _verify_option(input("Choose option: "), num_options)
                 
         return option
@@ -83,11 +85,12 @@ def _valid_login(curr_email, pwd):
         conn, c = _open_sql()
 
         # select matching email and correct password
-        c.execute(f'''SELECT *
-                      FROM users
-                      WHERE email LIKE '{curr_email}'
-                      AND pwd = '{pwd}';
-                      ''')
+        query = '''SELECT *
+                   FROM users
+                   WHERE email LIKE '{}'
+                   AND pwd = '{}';
+                   '''.format(curr_email, pwd)
+        c.execute(query)
 
         results = _close_sql(conn, c)
 
@@ -97,6 +100,21 @@ def _valid_login(curr_email, pwd):
         
         # no errors, return true
         return 1;
+
+# helper: checks if input for selection matches a result
+def _check_selected(selected_value, results):
+        # cycle through results for a non case senstive match 
+        selected = 0
+        for result in results:
+                if (selected_value.lower() == result[0].lower()):
+                        selected = 1
+                        selected_value = result[0]
+        
+        # no matches
+        if (not selected):
+                return 0;
+
+        return selected_value;
 
 # login menu: login menu and option prompt
 def login_menu():
@@ -123,21 +141,17 @@ def login_menu():
 
 # login option 1: registered user options
 def registered_login():
-        # get email input
+        # get email input and check for matching email
         curr_email = input("\nEmail: ")
-
-        # check for matching email and correct password, if not return false
-        if (not _existing_value('users', 'email', curr_email)):
-                print("Not an existing email.\n")
-                return 0;
+        while (not _existing_value('users', 'email', curr_email)):
+                print("Not an existing email.")
+                curr_email = input("Email: ")
                 
-        # get password input
+        # get password input and check for matching email and correct password
         pwd = getpass() # hide password input, source 2
-
-        # check for matching email and correct password, if not return false
-        if (not _valid_login(curr_email, pwd)):
-                print("Incorrect password.\n")
-                return 0;
+        while (not _valid_login(curr_email, pwd)):
+                print("Incorrect password.")
+                pwd = getpass()
 
         return curr_email; # no errors, return valid email
 
@@ -145,45 +159,42 @@ def registered_login():
 def unregistered_login():
         # get email input and check domain
         curr_email = input("\nEmail: ")
-        if (len(curr_email) < 1 or len(curr_email) > 20):
-                print("Invalid email length.\n")
-                return 0;
-
-        # check if it already exists, return false if it does
-        if (_existing_value('users', 'email', curr_email)):
-                print("Email already exists.\n")
-                return 0;
+        while (len(curr_email) < 1 or len(curr_email) > 20 or \
+        _existing_value('users', 'email', curr_email)):
+                print("Invalid email length or email already exists.")
+                curr_email = input("Email: ")
 
         # name input and domain check
         name = input("Name: ")
-        if (len(name) < 1 or len(name) > 16):
-                print("Invalid name length.\n")
-                return 0;
+        while (len(name) < 1 or len(name) > 16):
+                print("Invalid name length.")
+                name = input("Name: ")
 
         # city input and domain check
         city = input("City: ")
-        if (len(city) < 1 or len(city) > 15):
-                print("Invalid city length.\n")
-                return 0;
+        while (len(city) < 1 or len(city) > 15):
+                print("Invalid city length.")
+                city = input("City: ")
 
         # gender input and domain check
         gender = input("Gender: ")
-        if (len(gender) != 1):
-                print("Invalid gender length.\n")
-                return 0;
+        while (len(gender) != 1):
+                print("Invalid gender length.")
+                gender = input("Gender: ")
 
         # password input and domain check
         pwd = getpass() # hide password input, source 2
-        if ((len(pwd) < 1 or len(pwd) > 4) and pwd != '\n'):
-                print("Invalid password length.\n")
-                return 0;
+        while ((len(pwd) < 1 or len(pwd) > 4) and pwd != '\n'):
+                print("Invalid password length.")
+                pwd = getpass()
 
         conn, c = _open_sql()
 
         # insert new user into the database
-        c.execute(f'''INSERT INTO users
-                      VALUES ('{curr_email}', '{name}', '{pwd}', '{city}', '{gender}');
-                      ''')
+        query = '''INSERT INTO users
+                   VALUES ('{}', '{}', '{}', '{}', '{}');
+                   '''.format(curr_email, name, pwd, city, gender)
+        c.execute(query)
         
         _close_sql(conn, c)
 
@@ -228,13 +239,13 @@ def list_products(curr_email):
         conn, c = _open_sql()
 
         # task 1, selects products with active sales, order by sale counts
-        c.execute(f'''SELECT p.pid, p.descr, COUNT(distinct pr.rid), AVG(pr.rating), COUNT(distinct s.sid)
-                      FROM sales s, products p
-                      LEFT OUTER JOIN previews pr ON pr.pid = p.pid
-                      WHERE p.pid = s.pid AND s.edate > datetime('now')
-                      GROUP BY p.pid
-                      ORDER BY COUNT(distinct s.sid) DESC;
-                      ''')
+        c.execute('''SELECT p.pid, p.descr, COUNT(distinct pr.rid), AVG(pr.rating), COUNT(distinct s.sid)
+                     FROM sales s, products p
+                     LEFT OUTER JOIN previews pr ON pr.pid = p.pid
+                     WHERE p.pid = s.pid AND s.edate > datetime('now')
+                     GROUP BY p.pid
+                     ORDER BY COUNT(distinct s.sid) DESC;
+                     ''')
 
         results = _close_sql(conn, c)
 
@@ -244,23 +255,21 @@ def list_products(curr_email):
                 return;
 
         # display products
-        for products in results:
-                print(products)
+        print("#1: prodID, #2: prodDescr, #3: numPRev, #4: avgPRating, #5: numSales") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # select product
-        selected_pid = input("\nSelect product by identification number: ").lower()
-
-        # look for matching product, non case sensitive
-        selected = 0
-        for product in results:
-                if (selected_pid == product[0].lower()):
-                        selected = 1
-                        selected_pid = product[0]
-
-        # no product matches selection input
-        if (not selected):
+        selected_pid = _check_selected(input("\nSelect product by identification number: "), results)
+        while (not selected_pid):
                 print('No matching product.')
-                return;
+                selected_pid = _check_selected(input("Select product by identification number: "), results)
                         
         # open product selection menu
         product_selection(selected_pid, curr_email)
@@ -269,7 +278,7 @@ def list_products(curr_email):
 
 # product selection: display product menu and option prompt
 def product_selection(selected_pid, curr_email):
-        print(f"\nSelected: {selected_pid}")
+        print("\nSelected: {}".format(selected_pid))
         print("1: Write a product review")
         print("2: List reviews of product")
         print("3: List active sales of product")
@@ -306,21 +315,20 @@ def write_product_review(selected_pid, curr_email):
         reviewer = curr_email
 
         # check for valid rating input
-        try:
-                rating = float(input('Rating (must be float compatible): '))
-        except:
-                print("Invalid rating format.")
-                return;
-
-        if (rating < 1 or rating > 5):
-                print("Invalid rating value.")
-                return;
+        while (1):
+                try:
+                        rating = float(input('Rating (must be float compatible): '))
+                        if (rating < 1 or rating > 5):
+                                raise Exception()
+                        break;
+                except:
+                        print("Invalid rating format or value.")
 
         # get review text input and check domain
         rtext = input("Review text: ")
-        if (len(rtext) < 1 or len(rtext) > 20):
+        while (len(rtext) < 1 or len(rtext) > 20):
                print("Invalid review text length.")
-               return;
+               rtext = input("Review text: ")
 
         # set review date to current datetime
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -333,9 +341,10 @@ def write_product_review(selected_pid, curr_email):
         conn, c = _open_sql()
 
         # task 1a, add product review into database
-        c.execute(f'''INSERT INTO previews
-                      VALUES ({rid}, '{pid}', '{reviewer}', {rating}, '{rtext}', '{rdate}');
-                      ''')
+        query = '''INSERT INTO previews
+                   VALUES ({}, '{}', '{}', {}, '{}', '{}');
+                   '''.format(rid, pid, reviewer, rating, rtext, rdate)
+        c.execute(query)
         
         _close_sql(conn, c)
         
@@ -346,20 +355,29 @@ def list_product_reviews(selected_pid):
         conn, c = _open_sql()
 
         # task 1b, selects product reviews
-        c.execute(f'''SELECT *
-                      FROM previews pr
-                      WHERE pr.pid LIKE '{selected_pid}';
-                      ''')
+        query = '''SELECT *
+                   FROM previews pr
+                   WHERE pr.pid LIKE '{}';
+                   '''.format(selected_pid)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
         if (len(results) == 0):
                 print("No product reviews found.")
                 return;
-        
-        # print results
-        for preview in results:
-                print(preview)
+
+        # display product reviews
+        print("#1: prevID, #2: prodID, #3: prevReviewer, #4: prevRating, #5: prevRText, " + \
+              "#6: prevRDate") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         return;
 
@@ -380,38 +398,39 @@ def list_product_sales(selected_pid, curr_email):
         conn, c = _open_sql()
 
         # task 1c, selects active sales, order by remaining time
-        c.execute(f'''SELECT s.sid, s.descr, IFNULL(MAX(b.amount), s.rprice), {time_left}
-                      FROM sales s
-                      LEFT OUTER JOIN bids b ON b.sid = s.sid
-                      WHERE s.pid LIKE '{selected_pid}' AND s.edate > datetime('now')
-                      GROUP BY s.sid 
-                      ORDER BY julianday(s.edate) - julianday('now');
-                      ''')
+        query = '''SELECT s.sid, s.descr, IFNULL(MAX(b.amount), s.rprice), {}
+                   FROM sales s
+                   LEFT OUTER JOIN bids b ON b.sid = s.sid
+                   WHERE s.pid LIKE '{}' AND s.edate > datetime('now')
+                   GROUP BY s.sid 
+                   ORDER BY julianday(s.edate) - julianday('now');
+                   '''.format(time_left, selected_pid)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
         if (len(results) == 0):
                 print("No sales found.")
                 return;
-        
-        # print sales
-        for sale in results:
-                print(sale)
+
+
+        # display sales
+        print("#1: saleID, #2: saleDescr, #3: maxBAmount/saleRPrice, #4: daysLeft, #5: hoursLeft, " + \
+              "#6: minutesLeft") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, not case sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matching sale found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale selection menu
         sale_selection(selected_sid, curr_email)
@@ -424,9 +443,9 @@ def search_sales(curr_email):
         keywords = input("\nKeyword(s) input (seperated by spaces): ").split()
         
         # check for empty input
-        if (len(keywords) == 0):
+        while (len(keywords) == 0):
                 print("Invalid keyword length.")
-                return;
+                keywords = input("Keyword(s) input (seperated by spaces): ").split()
         
         time_left = '''CAST(julianday(s.edate) - julianday('now') AS int) AS days,
                        CAST(24*(julianday(s.edate) - julianday('now')
@@ -444,29 +463,30 @@ def search_sales(curr_email):
                         keyword_condition += 'UNION ALL '
 
                 # selection query for each keyword
-                keyword_condition += f'''SELECT s.sid, s.descr, IFNULL(MAX(b.amount), s.rprice), {time_left}
-                                         FROM sales s
-                                         LEFT OUTER JOIN products p ON p.pid = s.pid
-                                         LEFT OUTER JOIN bids b ON b.sid = s.sid
-                                         WHERE s.edate > datetime('now')
-                                         AND (s.descr LIKE '%{keywords[i]}%' OR p.descr LIKE '%{keywords[i]}%')
-                                         UNION ALL 
-                                         SELECT s.sid, s.descr, IFNULL(b.amount, s.rprice), {time_left}
-                                         FROM sales s
-                                         LEFT OUTER JOIN products p ON p.pid = s.pid
-                                         LEFT OUTER JOIN bids b ON b.sid = s.sid
-                                         WHERE s.edate > datetime('now')
-                                         AND (s.descr LIKE '%{keywords[i]}%' OR p.descr LIKE '%{keywords[i]}%')
-                                         '''
+                keyword_condition += '''SELECT s.sid, s.descr, IFNULL(MAX(b.amount), s.rprice), {}
+                                        FROM sales s
+                                        LEFT OUTER JOIN products p ON p.pid = s.pid
+                                        LEFT OUTER JOIN bids b ON b.sid = s.sid
+                                        WHERE s.edate > datetime('now')
+                                        AND (s.descr LIKE '%{}%' OR p.descr LIKE '%{}%')
+                                        UNION ALL 
+                                        SELECT s.sid, s.descr, IFNULL(b.amount, s.rprice), {}
+                                        FROM sales s
+                                        LEFT OUTER JOIN products p ON p.pid = s.pid
+                                        LEFT OUTER JOIN bids b ON b.sid = s.sid
+                                        WHERE s.edate > datetime('now')
+                                        AND (s.descr LIKE '%{}%' OR p.descr LIKE '%{}%')
+                                        '''.format(time_left, keywords[i], keywords[i], time_left, keywords[i], keywords[i])
 
         conn, c = _open_sql()
 
         # task 2, select sales matching the keywords, order by keyword count
-        c.execute(f'''SELECT *
-                      FROM ({keyword_condition})
-                      GROUP BY sid, descr
-                      ORDER BY COUNT(*) DESC;
-                      ''')
+        query = '''SELECT *
+                   FROM ({})
+                   GROUP BY sid, descr
+                   ORDER BY COUNT(*) DESC;
+                   '''.format(keyword_condition)
+        c.execute(query)
         
         original_results = _close_sql(conn, c)
 
@@ -482,23 +502,22 @@ def search_sales(curr_email):
                 return;
 
         # display sales
-        for sale in results:
-                print(sale)
+        print("#1: saleID, #2: saleDescr, #3: maxBAmount/saleRPrice, #4: daysLeft, #5: hoursLeft, " + \
+              "#6: minutesLeft") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching result, case not sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matches found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -507,24 +526,25 @@ def search_sales(curr_email):
 
 # sale selection: display sale selection menu and option prompt; improve sql query
 def sale_selection(selected_sid, curr_email):
-        print(f"\nSelected: {selected_sid}")
+        print("\nSelected: {}".format(selected_sid))
         print("Detailed information:")
         
         conn, c = _open_sql()
 
         # task 3, select associated sale and find more detailed information
-        c.execute(f'''SELECT s.lister, numRev, avgRat, s.descr, s.edate, s.cond,
-                      IFNULL(MAX(b.amount), s.rprice), p.descr, COUNT(pr.pid),
-                      IFNULL(AVG(pr.rating), "Product has not been reviewed")
-                      FROM (SELECT COUNT(r.reviewee) AS numRev, AVG(r.rating) AS avgRat
-                            FROM sales s
-                            LEFT OUTER JOIN reviews r ON r.reviewee = s.lister
-                            WHERE s.sid LIKE '{selected_sid}'), sales s
-                      LEFT OUTER JOIN bids b ON b.sid = s.sid
-                      LEFT OUTER JOIN products p ON p.pid = s.pid
-                      LEFT OUTER JOIN previews pr ON pr.pid = s.pid
-                      WHERE s.sid LIKE '{selected_sid}'
-                      ''')
+        query = '''SELECT s.lister, numRev, avgRat, s.descr, s.edate, s.cond,
+                   IFNULL(MAX(b.amount), s.rprice), p.descr, COUNT(pr.pid),
+                   IFNULL(AVG(pr.rating), "Product has not been reviewed")
+                   FROM (SELECT COUNT(r.reviewee) AS numRev, AVG(r.rating) AS avgRat
+                        FROM sales s
+                        LEFT OUTER JOIN reviews r ON r.reviewee = s.lister
+                        WHERE s.sid LIKE '{}'), sales s
+                   LEFT OUTER JOIN bids b ON b.sid = s.sid
+                   LEFT OUTER JOIN products p ON p.pid = s.pid
+                   LEFT OUTER JOIN previews pr ON pr.pid = s.pid
+                   WHERE s.sid LIKE '{}'
+                   '''.format(selected_sid, selected_sid)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -532,9 +552,17 @@ def sale_selection(selected_sid, curr_email):
                 print("No sales found.")
                 return;
 
-        # print detailed information
-        for info in results:
-                print(info)
+        # display detailed info
+        print("#1: saleLister, #2: numUReviews, #3: avgURating, #4: saleDescr, #5: saleEDate, " + \
+              "#6: saleCond, #7: maxBAmount/saleRPrice, #8: prodDescr, #9: numPrev, #10: avgPRating") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6", "#7", "#8", "#9", "#10")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # display selection options
         print("\nSelection Options:")
@@ -577,23 +605,25 @@ def bid_on_sale(selected_sid, curr_email):
         bdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # check for valid amount input
-        try:
-                amount = float(input('Amount (must be float compatible): '))
-        except:
-                print("Invalid amount format.")
-                return;
+        while (1):
+                try:
+                        amount = float(input('Amount (must be float compatible): '))
+                        break;
+                except:
+                        print("Invalid amount format.")
 
         # generate unique bid with max domain 4; increase domain up to 20
-        bid = f'B0{random.randint(1, 99)}'
+        bid = 'B0{}'.format(random.randint(1, 99))
         while (_existing_value('bids', 'bid', bid)):
-                bid = f'B0{random.randint(1, 99)}'
+                bid = 'B0{}'.format(random.randint(1, 99))
                        
         conn, c = _open_sql()
 
         # task 3a, insert bid into database
-        c.execute(f'''INSERT INTO bids
-                      VALUES ('{bid}', '{bidder}', '{sid}', '{bdate}', {amount});
-                      ''')
+        query = '''INSERT INTO bids
+                   VALUES ('{}', '{}', '{}', '{}', {});
+                   '''.format(bid, bidder, sid, bdate, amount)
+        c.execute(query)
         
         _close_sql(conn, c)
         
@@ -604,13 +634,14 @@ def list_seller_sales(selected_sid, curr_email):
         conn, c = _open_sql()
 
         # task 3b, select active sales, order by time left
-        c.execute(f'''SELECT s.sid, s.lister, s.pid, s.edate, s.descr, s.cond, s.rprice
-                      FROM (SELECT s.lister
-                            FROM sales s
-                            WHERE s.sid LIKE '{selected_sid}') AS seller, sales s
-                      WHERE s.lister LIKE seller.lister AND s.edate > datetime('now')
-                      ORDER BY julianday(s.edate) - julianday('now');
-                      ''')
+        query = '''SELECT s.sid, s.lister, s.pid, s.edate, s.descr, s.cond, s.rprice
+                   FROM (SELECT s.lister
+                        FROM sales s
+                        WHERE s.sid LIKE '{}') AS seller, sales s
+                   WHERE s.lister LIKE seller.lister AND s.edate > datetime('now')
+                   ORDER BY julianday(s.edate) - julianday('now');
+                   '''.format(selected_sid)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -619,23 +650,22 @@ def list_seller_sales(selected_sid, curr_email):
                 return;
         
         # display sales
-        for sale in results:
-                print(sale)
+        print("#1: saleID, #2: saleLister, #3: prodID, #4: saleEdate, " + \
+              "#5: saleDescr, #6: saleCond, #7: saleRPrice") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6", "#7")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, case not sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # matching not found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -643,16 +673,17 @@ def list_seller_sales(selected_sid, curr_email):
         return;
 
 # sale option 3: list reviews of seller
-def list_seller_reviews(selected_sid):
+def list_seller_reviews(selected_sid): # here
         conn, c = _open_sql()
 
         # task 3c, select seller's reviews
-        c.execute(f'''SELECT r.reviewer, r.reviewee, r.rating, r.rtext, r.rdate
-                      FROM (SELECT s.lister
-                            FROM sales s
-                            WHERE s.sid LIKE '{selected_sid}') AS seller, reviews r
-                      WHERE r.reviewee LIKE seller.lister;
-                      ''')
+        query = '''SELECT r.reviewer, r.reviewee, r.rating, r.rtext, r.rdate
+                   FROM (SELECT s.lister
+                        FROM sales s
+                        WHERE s.sid LIKE '{}') AS seller, reviews r
+                   WHERE r.reviewee LIKE seller.lister;
+                   '''.format(selected_sid)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -662,8 +693,16 @@ def list_seller_reviews(selected_sid):
                 return;
 
         # display reviews
-        for review in results:
-                print(review)
+        print("#1: revReviewer, #2: revReviewee, #3: revRating, " + \
+              "#4: revRText, #5: revRDate") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         return;
 
@@ -671,67 +710,66 @@ def list_seller_reviews(selected_sid):
 def post_sale(curr_email):
         # pid input and check domain
         pid = input("\nProduct ID (Use empty input for none): ")
-        if (len(pid) > 4):
+        while (len(pid) > 4):
                 print("Invalid product ID length.")
-                return;
+                pid = input("Product ID (Use empty input for none): ")
 
         # for empty input
         if (len(pid) == 0):
                 pid = ''
 
         # edate input, using try and except to error check, source 4
-        try: 
-                edate = input("End date and time (YYYY-MM-DD HH:MM:SS): ")
-                datetime.strptime(edate, "%Y-%m-%d %H:%M:%S") # validate time input, source 3
-        except:
-                print("Wrong datetime format.")
-                return;
-
-        # current day to string, source 5
-        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # if date is not in the future or values are not zero padded
-        if (edate <= today or len(edate) != 19):
-                print("Date is not in the future or values are not zero padded.")
-                return;
+        while (1):
+                try: 
+                        edate = input("End date and time (YYYY-MM-DD HH:MM:SS): ")
+                        datetime.strptime(edate, "%Y-%m-%d %H:%M:%S") # validate time input, source 3
+                        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # current day to string, source 5
+                        if (edate <= today or len(edate) != len(today)):
+                                raise Exception()
+                        break;
+                except:
+                        print("Wrong datetime format or date is not in the future.")
 
         # description input and check domain
         descr = input("Description: ")
-        if (len(descr) < 1 or len(descr) > 25):
+        while (len(descr) < 1 or len(descr) > 25):
                 print("Invalid description length.")
-                return;
+                descr = input("Description: ")
 
         # condition input and check domain
         cond = input("Condition: ")
-        if (len(cond) < 1 or len(cond) > 10):
+        while (len(cond) < 1 or len(cond) > 10):
                 print("Invalid condition length.")
-                return;
+                cond = input("Condition: ")
         
         # reserved price and check domain
         rprice = input("Reserved Price (Use empty input for none): ")
-        if (len(rprice) > 0 and not rprice.isdigit()):
+        while (len(rprice) > 0 and not rprice.isdigit()):
                 print("Invalid reserved price length or non-digit.")
-                return;
-        rprice = int(rprice)
+                rprice = input("Reserved Price (Use empty input for none): ")
+
+        
                 
         # for empty input
         if (len(rprice) == 0):
-                rprice = 0
+                rprice = "0"
+        rprice = int(rprice)
 
         # set lister to current email 
         lister = curr_email
 
         # generates unique sid with max domain of 4
-        sid = f'S0{random.randint(1, 99)}'
+        sid = 'S0{}'.format(random.randint(1, 99))
         while (_existing_value('sales', 'sid', sid)):
-                sid = f'S0{random.randint(1, 99)}'
+                sid = 'S0{}'.format(random.randint(1, 99))
         
         conn, c = _open_sql()
 
         # task 4, insert sale into database
-        c.execute(f'''INSERT INTO sales
-                      VALUES ('{sid}', '{lister}', '{pid}', '{edate}', '{descr}', '{cond}', {rprice});
-                      ''')
+        query = '''INSERT INTO sales
+                   VALUES ('{}', '{}', '{}', '{}', '{}', '{}', {});
+                   '''.format(sid, lister, pid, edate, descr, cond, rprice)
+        c.execute(query)
         
         _close_sql(conn, c)
 
@@ -741,45 +779,44 @@ def post_sale(curr_email):
 def search_users(curr_email):
         # input keyword
         keyword = input("\nEnter a keyword: ")
-
-        if (len(keyword) == 0):
+        while (len(keyword) == 0):
                 print("Invalid keyword length.")
-                return;
+                keyword = input("Enter a keyword: ")
         
         conn, c = _open_sql()
 
         # task 5, select user matching keyword in email or name
-        c.execute(f'''SELECT email, name, city
-                      FROM users
-                      WHERE email LIKE '%{keyword}%'
-                      OR name LIKE '%{keyword}%';
-                      ''')
+        query = '''SELECT email, name, city
+                   FROM users
+                   WHERE email LIKE '%{}%'
+                   OR name LIKE '%{}%';
+                   '''.format(keyword, keyword)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
+        
         # no users found
         if (len(results) == 0):
                 print("No users found.")
                 return;
 
         # display users
-        for user in results:
-                print(user)
+        print("#1: userEmail, #2: userName, #3: userCity") # legend
+        print("|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
-        # select email
-        selected_email = input("\nSelect user by email: ").lower()
-
-        # find matching user, case not sensitive
-        selected = 0
-        for user in results:
-                if (selected_email == user[0].lower()):
-                        selected = 1
-                        selected_email = user[0]
-
-        # no match found
-        if (not selected):
+        # select user
+        selected_email = _check_selected(input("\nSelect user by email: "), results)
+        while (not selected_email):
                 print("No matching user.")
-                return;
+                selected_email = _check_selected(input("Select user by email: "), results)
 
         # open user selection menu
         user_selection(selected_email, curr_email)
@@ -788,7 +825,7 @@ def search_users(curr_email):
 
 # user selection: display user selection menu and option prompt
 def user_selection(selected_email, curr_email):
-        print(f"\nSelected: {selected_email}")
+        print("\nSelected: {}".format(selected_email))
         print("1: Write a user review")
         print("2: List their active sales")
         print("3: List reviews of the user")
@@ -825,21 +862,20 @@ def write_user_review(selected_email, curr_email):
         reviewee = selected_email
 
         # check for valid rating input
-        try:
-                rating = float(input('Rating (must be float compatible): '))
-        except:
-                print("Invalid rating format.")
-                return;
-
-        if (rating < 1 or rating > 5):
-                print("Invalid rating value.")
-                return;
+        while (1):
+                try:
+                        rating = float(input('Rating (must be float compatible): '))
+                        if (rating < 1 or rating > 5):
+                                raise Exception()
+                        break;
+                except:
+                        print("Invalid rating format or value.")
 
         # get rtext input and check domain
         rtext = input("Review text: ")
-        if (len(rtext) < 1 or len(rtext) > 20):
+        while (len(rtext) < 1 or len(rtext) > 20):
                print("Invalid review text length.")
-               return;
+               rtext = input("Review text: ")
 
         # set rdate to current datime
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -847,9 +883,10 @@ def write_user_review(selected_email, curr_email):
         conn, c = _open_sql()
 
         # task 5a, insert user review into database
-        c.execute(f'''INSERT INTO reviews
-                      VALUES ('{reviewer}', '{reviewee}', {rating}, '{rtext}', '{rdate}');
-                      ''')
+        query = '''INSERT INTO reviews
+                   VALUES ('{}', '{}', {}, '{}', '{}');
+                   '''.format(reviewer, reviewee, rating, rtext, rdate)
+        c.execute(query)
                         
         _close_sql(conn, c)
         
@@ -857,15 +894,27 @@ def write_user_review(selected_email, curr_email):
 
 # user option 2: list user sales
 def list_user_sales(selected_email, curr_email):
+        time_left = '''CAST(julianday(s.edate) - julianday('now') AS int) AS days,
+                       CAST(24*(julianday(s.edate) - julianday('now')
+                       - CAST(julianday(s.edate) - julianday('now') AS int)) AS int) AS hours,
+                       CAST(60*((24*(julianday(s.edate) - julianday('now')
+                       - CAST(julianday(s.edate) - julianday('now') AS int)))
+                       - (CAST(24*(julianday(s.edate) - julianday('now')
+                       - CAST(julianday(s.edate) - julianday('now') AS int)) AS int))) AS int) AS minutes
+                       '''
         
         conn, c = _open_sql()
 
         # task 5b, select user's active sales
-        c.execute(f'''SELECT *
-                      FROM sales s
-                      WHERE s.lister LIKE '{selected_email}' AND s.edate > datetime('now')
-                      ORDER BY julianday(s.edate) - julianday('now');
-                      ''')
+        query = '''SELECT s.sid, s.descr, IFNULL(MAX(b.amount), s.rprice), {}
+                   FROM sales s
+                   LEFT OUTER JOIN bids b ON b.sid = s.sid
+                   WHERE s.lister LIKE '{}' AND s.edate > datetime('now')
+                   GROUP BY s.sid 
+                   ORDER BY julianday(s.edate) - julianday('now');
+                   '''.format(time_left, selected_email)
+        
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -874,24 +923,23 @@ def list_user_sales(selected_email, curr_email):
                 print('No sales found.')
                 return;
 
-        # display sales
-        for sale in results:
-                print(sale)
+        # display sales 
+        print("#1: saleID, #2: saleDescr, #3: maxBAmount/saleRPrice, #4: daysLeft, #5: hoursLeft, " + \
+              "#6: minutesLeft") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5", "#6")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, not case sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matches
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -903,10 +951,11 @@ def list_user_reviews(selected_email):
         conn, c = _open_sql()
 
         # task 5c, select user's reviews
-        c.execute(f'''SELECT *
-                      FROM reviews r
-                      WHERE r.reviewee LIKE '{selected_email}';
-                      ''')
+        query = '''SELECT *
+                   FROM reviews r
+                   WHERE r.reviewee LIKE '{}';
+                   '''.format(selected_email)
+        c.execute(query)
         
         results = _close_sql(conn, c)
 
@@ -915,8 +964,15 @@ def list_user_reviews(selected_email):
                 return;
         
         # display reviews
-        for review in results:
-                print(review)
+        print("#1: revReviewer, #2: revReviewee, #3: revRating, #4: revRText, #5: revRDate") # legend
+        print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
+              .format("#1","#2","#3","#4","#5")) # display columns
+        for result in results:
+                for column in result:
+                        if (column == None): # prevent crashing when formatting None type
+                                column = "None"
+                        print("|{:<20}".format(column),  end = "")
+                print("|")
 
         return;
 
@@ -928,6 +984,8 @@ def main():
                 exit()
 
         # program is running
+        print('\nREQUIREMENT 1: Python 3.5, and use "python3" in the terminal.')
+        print("REQUIREMENT 2: Stretch the terminal to fit the width of your screen.")
         while (1):
                 curr_email = login_menu()
                 login_status = 1
