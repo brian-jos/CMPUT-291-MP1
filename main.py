@@ -34,7 +34,7 @@ def _existing_value(table, column, value):
         query = '''SELECT *
                    FROM {}
                    WHERE {} LIKE '{}';
-                   '''.format(table, column, value)
+                   '''.format(table, column, value) # use variables in strings, source 10
         c.execute(query)
         
         results = _close_sql(conn, c)
@@ -259,7 +259,7 @@ def list_products(curr_email):
                 print("No products found.")
                 return;
 
-        # display products
+        # display products, format width of variables, source 11
         print("#1: prodID, #2: prodDescr, #3: numPRev, #4: avgPRating, #5: numSales") # legend
         print("|{:<20}|{:<20}|{:<20}|{:<20}|{:<20}|"\
               .format("#1","#2","#3","#4","#5")) # display columns
@@ -983,8 +983,10 @@ def list_user_reviews(selected_email):
 def main():
         try: # checking for existing file, source 7
                 open(sys.argv[1])
+                if (sys.argv[1][-3:].lower() != ".db"): # check for .db file
+                        raise Exception()
         except:
-                print('Database file not found.')
+                print('Database file not found or not a ".db" file.')
                 exit()
 
         # program is running
