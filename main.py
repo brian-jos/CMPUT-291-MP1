@@ -62,6 +62,7 @@ def _get_menu_option(num_options):
         # gets option and loops until valid
         option = _verify_option(input("\nChoose option: "), num_options)
         while (not option):
+                print("Invalid option range.");
                 option = _verify_option(input("Choose option: "), num_options)
                 
         return option
@@ -98,6 +99,21 @@ def _valid_login(curr_email, pwd):
         # no errors, return true
         return 1;
 
+# helper: checks if input for selection matches a result
+def _check_selected(selected_value, results):
+        # cycle through results for a non case senstive match 
+        selected = 0
+        for result in results:
+                if (selected_value.lower() == result[0].lower()):
+                        selected = 1
+                        selected_value = result[0]
+        
+        # no matches
+        if (not selected):
+                return 0;
+
+        return selected_value;
+
 # login menu: login menu and option prompt
 def login_menu():
         print("----- LOGIN MENU -----")
@@ -123,21 +139,17 @@ def login_menu():
 
 # login option 1: registered user options
 def registered_login():
-        # get email input
+        # get email input and check for matching email
         curr_email = input("\nEmail: ")
-
-        # check for matching email and correct password, if not return false
-        if (not _existing_value('users', 'email', curr_email)):
-                print("Not an existing email.\n")
-                return 0;
+        while (not _existing_value('users', 'email', curr_email)):
+                print("Not an existing email.")
+                curr_email = input("Email: ")
                 
-        # get password input
+        # get password input and check for matching email and correct password
         pwd = getpass() # hide password input, source 2
-
-        # check for matching email and correct password, if not return false
-        if (not _valid_login(curr_email, pwd)):
-                print("Incorrect password.\n")
-                return 0;
+        while (not _valid_login(curr_email, pwd)):
+                print("Incorrect password.")
+                pwd = getpass()
 
         return curr_email; # no errors, return valid email
 
@@ -145,38 +157,34 @@ def registered_login():
 def unregistered_login():
         # get email input and check domain
         curr_email = input("\nEmail: ")
-        if (len(curr_email) < 1 or len(curr_email) > 20):
-                print("Invalid email length.\n")
-                return 0;
-
-        # check if it already exists, return false if it does
-        if (_existing_value('users', 'email', curr_email)):
-                print("Email already exists.\n")
-                return 0;
+        while (len(curr_email) < 1 or len(curr_email) > 20 or \
+        _existing_value('users', 'email', curr_email)):
+                print("Invalid email length or email already exists.")
+                curr_email = input("Email: ")
 
         # name input and domain check
         name = input("Name: ")
-        if (len(name) < 1 or len(name) > 16):
-                print("Invalid name length.\n")
-                return 0;
+        while (len(name) < 1 or len(name) > 16):
+                print("Invalid name length.")
+                name = input("Name: ")
 
         # city input and domain check
         city = input("City: ")
-        if (len(city) < 1 or len(city) > 15):
-                print("Invalid city length.\n")
-                return 0;
+        while (len(city) < 1 or len(city) > 15):
+                print("Invalid city length.")
+                city = input("City: ")
 
         # gender input and domain check
         gender = input("Gender: ")
-        if (len(gender) != 1):
-                print("Invalid gender length.\n")
-                return 0;
+        while (len(gender) != 1):
+                print("Invalid gender length.")
+                gender = input("Gender: ")
 
         # password input and domain check
         pwd = getpass() # hide password input, source 2
-        if ((len(pwd) < 1 or len(pwd) > 4) and pwd != '\n'):
-                print("Invalid password length.\n")
-                return 0;
+        while ((len(pwd) < 1 or len(pwd) > 4) and pwd != '\n'):
+                print("Invalid password length.")
+                pwd = getpass()
 
         conn, c = _open_sql()
 
@@ -244,23 +252,17 @@ def list_products(curr_email):
                 return;
 
         # display products
+        print("|prodID \t|prodDescr \t\t|numPReviews \t|avgPRating \t|numSales \t|")
         for products in results:
-                print(products)
+                for column in products:
+                        print(f"|{column} \t\t",  end = "")
+                print("|")
 
         # select product
-        selected_pid = input("\nSelect product by identification number: ").lower()
-
-        # look for matching product, non case sensitive
-        selected = 0
-        for product in results:
-                if (selected_pid == product[0].lower()):
-                        selected = 1
-                        selected_pid = product[0]
-
-        # no product matches selection input
-        if (not selected):
+        selected_pid = _check_selected(input("\nSelect product by identification number: "), results)
+        while (not selected_pid):
                 print('No matching product.')
-                return;
+                selected_pid = _check_selected(input("Select product by identification number: "), results)
                         
         # open product selection menu
         product_selection(selected_pid, curr_email)
@@ -306,21 +308,20 @@ def write_product_review(selected_pid, curr_email):
         reviewer = curr_email
 
         # check for valid rating input
-        try:
-                rating = float(input('Rating (must be float compatible): '))
-        except:
-                print("Invalid rating format.")
-                return;
-
-        if (rating < 1 or rating > 5):
-                print("Invalid rating value.")
-                return;
+        while (1):
+                try:
+                        rating = float(input('Rating (must be float compatible): '))
+                        if (rating < 1 or rating > 5):
+                                raise Exception()
+                        break;
+                except:
+                        print("Invalid rating format or value.")
 
         # get review text input and check domain
         rtext = input("Review text: ")
-        if (len(rtext) < 1 or len(rtext) > 20):
+        while (len(rtext) < 1 or len(rtext) > 20):
                print("Invalid review text length.")
-               return;
+               rtext = input("Review text: ")
 
         # set review date to current datetime
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -357,9 +358,12 @@ def list_product_reviews(selected_pid):
                 print("No product reviews found.")
                 return;
         
-        # print results
+        # display product reviews
+        print("|prevID \t|prodID \t|prevReviewer \t\t|prevRating \t|prevText \t\t|revDate \t\t\t|")
         for preview in results:
-                print(preview)
+                for column in preview:
+                        print(f"|{column} \t\t",  end = "")
+                print("|")
 
         return;
 
@@ -393,25 +397,19 @@ def list_product_sales(selected_pid, curr_email):
         if (len(results) == 0):
                 print("No sales found.")
                 return;
-        
-        # print sales
+
+        # display sales
+        print("|saleID \t\t|saleDescr \t\t\t|bidAmount/saleRPrice \t|daysLeft \t\t|hoursLeft \t\t|minutesLeft \t\t|")
         for sale in results:
-                print(sale)
+                for column in sale:
+                        print(f"|{column} \t\t\t",  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, not case sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matching sale found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale selection menu
         sale_selection(selected_sid, curr_email)
@@ -424,9 +422,9 @@ def search_sales(curr_email):
         keywords = input("\nKeyword(s) input (seperated by spaces): ").split()
         
         # check for empty input
-        if (len(keywords) == 0):
+        while (len(keywords) == 0):
                 print("Invalid keyword length.")
-                return;
+                keywords = input("Keyword(s) input (seperated by spaces): ").split()
         
         time_left = '''CAST(julianday(s.edate) - julianday('now') AS int) AS days,
                        CAST(24*(julianday(s.edate) - julianday('now')
@@ -482,23 +480,17 @@ def search_sales(curr_email):
                 return;
 
         # display sales
+        print("|saleID \t\t|saleDescr \t\t\t|bidAmount/saleRPrice \t|daysLeft \t\t|hoursLeft \t\t|minutesLeft \t\t|")
         for sale in results:
-                print(sale)
+                for column in sale:
+                        print(f"|{column} \t\t\t",  end = "")
+                print("|")
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching result, case not sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matches found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -532,9 +524,22 @@ def sale_selection(selected_sid, curr_email):
                 print("No sales found.")
                 return;
 
-        # print detailed information
+        # display detailed info
+        print("|saleLister \t|numRev\t|avgRating \t|saleDescr \t|saleEDate \t\t|saleCond \t|", end = "")
+        print("bidAmount/saleRPrice|")
         for info in results:
-                print(info)
+                n_col = 1
+                for column in info:
+                        if (n_col == 3): 
+                                print(f"|{column} \t\t",  end = "") # special case for avgRating
+                        elif (n_col == 6): 
+                                print(f"|{column} \t\t",  end = "") # special case for saleCond
+                        elif (n_col == 7):
+                                print(f"|{column} \t\t\t",  end = "") # special case for bidAmount/saleRPric
+                        else:
+                                print(f"|{column} \t",  end = "")
+                        n_col += 1
+                print("|")
 
         # display selection options
         print("\nSelection Options:")
@@ -577,11 +582,12 @@ def bid_on_sale(selected_sid, curr_email):
         bdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # check for valid amount input
-        try:
-                amount = float(input('Amount (must be float compatible): '))
-        except:
-                print("Invalid amount format.")
-                return;
+        while (1):
+                try:
+                        amount = float(input('Amount (must be float compatible): '))
+                        break;
+                except:
+                        print("Invalid amount format.")
 
         # generate unique bid with max domain 4; increase domain up to 20
         bid = f'B0{random.randint(1, 99)}'
@@ -623,19 +629,10 @@ def list_seller_sales(selected_sid, curr_email):
                 print(sale)
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, case not sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # matching not found
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -671,52 +668,50 @@ def list_seller_reviews(selected_sid):
 def post_sale(curr_email):
         # pid input and check domain
         pid = input("\nProduct ID (Use empty input for none): ")
-        if (len(pid) > 4):
+        while (len(pid) > 4):
                 print("Invalid product ID length.")
-                return;
+                pid = input("Product ID (Use empty input for none): ")
 
         # for empty input
         if (len(pid) == 0):
                 pid = ''
 
         # edate input, using try and except to error check, source 4
-        try: 
-                edate = input("End date and time (YYYY-MM-DD HH:MM:SS): ")
-                datetime.strptime(edate, "%Y-%m-%d %H:%M:%S") # validate time input, source 3
-        except:
-                print("Wrong datetime format.")
-                return;
-
-        # current day to string, source 5
-        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # if date is not in the future or values are not zero padded
-        if (edate <= today or len(edate) != 19):
-                print("Date is not in the future or values are not zero padded.")
-                return;
+        while (1):
+                try: 
+                        edate = input("End date and time (YYYY-MM-DD HH:MM:SS): ")
+                        datetime.strptime(edate, "%Y-%m-%d %H:%M:%S") # validate time input, source 3
+                        today = datetime.now().strftime("%Y-%m-%d %H:%M:%S") # current day to string, source 5
+                        if (edate <= today or len(edate) != len(today)):
+                                raise Exception()
+                        break;
+                except:
+                        print("Wrong datetime format or date is not in the future.")
 
         # description input and check domain
         descr = input("Description: ")
-        if (len(descr) < 1 or len(descr) > 25):
+        while (len(descr) < 1 or len(descr) > 25):
                 print("Invalid description length.")
-                return;
+                descr = input("Description: ")
 
         # condition input and check domain
         cond = input("Condition: ")
-        if (len(cond) < 1 or len(cond) > 10):
+        while (len(cond) < 1 or len(cond) > 10):
                 print("Invalid condition length.")
-                return;
+                cond = input("Condition: ")
         
         # reserved price and check domain
         rprice = input("Reserved Price (Use empty input for none): ")
-        if (len(rprice) > 0 and not rprice.isdigit()):
+        while (len(rprice) > 0 and not rprice.isdigit()):
                 print("Invalid reserved price length or non-digit.")
-                return;
-        rprice = int(rprice)
+                rprice = input("Reserved Price (Use empty input for none): ")
+
+        
                 
         # for empty input
         if (len(rprice) == 0):
-                rprice = 0
+                rprice = "0"
+        rprice = int(rprice)
 
         # set lister to current email 
         lister = curr_email
@@ -741,10 +736,9 @@ def post_sale(curr_email):
 def search_users(curr_email):
         # input keyword
         keyword = input("\nEnter a keyword: ")
-
-        if (len(keyword) == 0):
+        while (len(keyword) == 0):
                 print("Invalid keyword length.")
-                return;
+                keyword = input("Enter a keyword: ")
         
         conn, c = _open_sql()
 
@@ -757,6 +751,7 @@ def search_users(curr_email):
         
         results = _close_sql(conn, c)
 
+        
         # no users found
         if (len(results) == 0):
                 print("No users found.")
@@ -766,20 +761,11 @@ def search_users(curr_email):
         for user in results:
                 print(user)
 
-        # select email
-        selected_email = input("\nSelect user by email: ").lower()
-
-        # find matching user, case not sensitive
-        selected = 0
-        for user in results:
-                if (selected_email == user[0].lower()):
-                        selected = 1
-                        selected_email = user[0]
-
-        # no match found
-        if (not selected):
+        # select user
+        selected_email = _check_selected(input("\nSelect user by email: "), results)
+        while (not selected_email):
                 print("No matching user.")
-                return;
+                selected_email = _check_selected(input("Select user by email: "), results)
 
         # open user selection menu
         user_selection(selected_email, curr_email)
@@ -825,21 +811,20 @@ def write_user_review(selected_email, curr_email):
         reviewee = selected_email
 
         # check for valid rating input
-        try:
-                rating = float(input('Rating (must be float compatible): '))
-        except:
-                print("Invalid rating format.")
-                return;
-
-        if (rating < 1 or rating > 5):
-                print("Invalid rating value.")
-                return;
+        while (1):
+                try:
+                        rating = float(input('Rating (must be float compatible): '))
+                        if (rating < 1 or rating > 5):
+                                raise Exception()
+                        break;
+                except:
+                        print("Invalid rating format or value.")
 
         # get rtext input and check domain
         rtext = input("Review text: ")
-        if (len(rtext) < 1 or len(rtext) > 20):
+        while (len(rtext) < 1 or len(rtext) > 20):
                print("Invalid review text length.")
-               return;
+               rtext = input("Review text: ")
 
         # set rdate to current datime
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -879,19 +864,10 @@ def list_user_sales(selected_email, curr_email):
                 print(sale)
 
         # select sale
-        selected_sid = input("\nSelect sale by identification number: ").lower()
-
-        # find matching sale, not case sensitive
-        selected = 0
-        for sale in results:
-                if (selected_sid == sale[0].lower()):
-                        selected = 1
-                        selected_sid = sale[0]
-
-        # no matches
-        if (not selected):
+        selected_sid = _check_selected(input("\nSelect sale by identification number: "), results)
+        while (not selected_sid):
                 print('No matching sale.')
-                return;
+                selected_sid = _check_selected(input("Select sale by identification number: "), results)
 
         # open sale menu
         sale_selection(selected_sid, curr_email)
@@ -928,6 +904,7 @@ def main():
                 exit()
 
         # program is running
+        print("\nRECOMENDED: Stretch the terminal to fit the width of your screen.")
         while (1):
                 curr_email = login_menu()
                 login_status = 1
