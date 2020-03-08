@@ -1,4 +1,4 @@
-Group members: Brian Rogador (brianjos), 
+Group members: Brian Rogador (brianjos), Jakob Sample (jsample)
 
 Collaborations and sources:
 1 -> https://www.w3schools.com/python/python_ref_string.asp
@@ -10,3 +10,5 @@ Collaborations and sources:
 7 -> https://dbader.org/blog/python-check-if-file-exists
 8 -> https://stackoverflow.com/questions/289680/difference-between-2-dates-in-sqlite
 9 -> https://www.sqlitetutorial.net/sqlite-functions/sqlite-ifnull/
+10 -> https://www.programiz.com/python-programming/methods/string/format
+11 -> https://stackoverflow.com/questions/34734572/tabs-in-print-are-not-consistent-python
