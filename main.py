@@ -1,14 +1,14 @@
 import sqlite3
 import sys # get db through command line, source 6
-import random # help generate a more unique sale id
+import random # help generate a more unique IDs
 from getpass import getpass # only used to hide password input, source 2
 from datetime import datetime # only used to validate date input, source 3
 
 '''
 to do
+- add stricter error checking (ex: email and gender)
 - improve sql queries to be simpler 
 - improve sql query for system option 2 (task 2 on spec) to not have to remove NULL entries
-- increase domain size of bid and rid with better randomization method
 - try to find ways to break inputs or data
 '''
 
@@ -102,6 +102,24 @@ def _check_selected(selected_value, results):
                 return 0;
 
         return selected_value;
+
+# helper: generates a new rid by one upping the highest existing rid
+def _generate_new_rid():
+        conn, c = _open_sql()
+
+        # find highest rid
+        c.execute('''SELECT MAX(rid)
+                     FROM previews;
+                     ''')
+        
+        result = _close_sql(conn, c)
+        
+        if (len(result) == 0): # no existing rids, start at 1
+                return 1;
+        
+        new_rid = int(result[0][0]) + 1 # increase highest rid by 1
+        
+        return new_rid;
 
 # login menu: login menu and option prompt
 def login_menu():
@@ -291,7 +309,7 @@ def product_selection(selected_pid, curr_email):
 
         return;
 
-# product option 1: write product review; extend rid domain to be "unlimited"
+# product option 1: write product review
 def write_product_review(selected_pid, curr_email):
         print()
 
@@ -320,10 +338,8 @@ def write_product_review(selected_pid, curr_email):
         # set review date to current datetime
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-        # generate unique rid with max domain 2; domain should be "unlimited"
-        rid = random.randint(1, 99)
-        while (_existing_value('previews', 'rid', rid)):
-                rid = random.randint(1, 99)
+        # generate unique rid, finds largest rid and adds 1 to it
+        rid = _generate_new_rid()
                 
         conn, c = _open_sql()
 
@@ -578,7 +594,7 @@ def sale_selection(selected_sid, curr_email):
 
         return;
 
-# sale option 1: bid on sale; extend bid domain to 20
+# sale option 1: bid on sale
 def bid_on_sale(selected_sid, curr_email):
         print()
 
@@ -599,10 +615,11 @@ def bid_on_sale(selected_sid, curr_email):
                 except:
                         print("Invalid amount format.")
 
-        # generate unique bid with max domain 4; increase domain up to 20
-        bid = 'B0{}'.format(random.randint(1, 99))
+        # generate unique bid with max domain 20
+        domain = int('9' * 18)
+        bid = 'B0{}'.format(random.randint(1, domain))
         while (_existing_value('bids', 'bid', bid)):
-                bid = 'B0{}'.format(random.randint(1, 99))
+                bid = 'B0{}'.format(random.randint(1, domain))
                        
         conn, c = _open_sql()
 
