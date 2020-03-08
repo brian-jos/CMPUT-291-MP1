@@ -103,24 +103,6 @@ def _check_selected(selected_value, results):
 
         return selected_value;
 
-# helper: generates a new rid by one upping the highest existing rid
-def _generate_new_rid():
-        conn, c = _open_sql()
-
-        # find highest rid
-        c.execute('''SELECT MAX(rid)
-                     FROM previews;
-                     ''')
-        
-        result = _close_sql(conn, c)
-        
-        if (len(result) == 0): # no existing rids, start at 1
-                return 1;
-        
-        new_rid = int(result[0][0]) + 1 # increase highest rid by 1
-        
-        return new_rid;
-
 # login menu: login menu and option prompt
 def login_menu():
         print("----- LOGIN MENU -----")
@@ -339,7 +321,24 @@ def write_product_review(selected_pid, curr_email):
         rdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         # generate unique rid, finds largest rid and adds 1 to it
-        rid = _generate_new_rid()
+        conn, c = _open_sql()
+
+        # query for largest value
+        query = '''SELECT MAX(rid)
+                   FROM previews;
+                   '''
+        c.execute(query)
+        
+        result = _close_sql(conn, c)
+
+        # no largest value, set it to 0
+        if (len(result) == 0):
+                largest_value = 0
+        # largest value found, extract it from the list
+        else:
+                largest_value = int(result[0][0])
+        
+        rid = largest_value + 1 # increase it by one to make it unique
                 
         conn, c = _open_sql()
 
@@ -606,14 +605,33 @@ def bid_on_sale(selected_sid, curr_email):
 
         # set bdate to current datetime
         bdate = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        
+        conn, c = _open_sql()
+        
+        # query for largest amount related to sale
+        query = '''SELECT MAX(amount) 
+                   FROM bids, sales
+                   WHERE sales.sid LIKE '{}' AND sales.sid = bids.sid;
+                   '''.format(sid)
+        c.execute(query)
+
+        result = _close_sql(conn, c)
+
+        if (result[0][0] == None): # no largest amount
+                largest_amount = 0
+        else:
+                largest_amount = float(result[0][0])
 
         # check for valid amount input
         while (1):
                 try:
-                        amount = float(input('Amount (must be float compatible): '))
+                        amount = float(input('Amount (must be float compatible): ')) # amount must be float
+                                
+                        if (amount <= largest_amount): # amount must be greater than current largest
+                                raise Exception()
                         break;
                 except:
-                        print("Invalid amount format.")
+                        print("Invalid amount format or bid is not greater than the current largest bid.")
 
         # generate unique bid with max domain 20
         domain = int('9' * 18)
