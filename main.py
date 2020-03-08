@@ -332,7 +332,7 @@ def write_product_review(selected_pid, curr_email):
         result = _close_sql(conn, c)
 
         # no largest value, set it to 0
-        if (len(result) == 0):
+        if (result[0][0] == None):
                 largest_value = 0
         # largest value found, extract it from the list
         else:
