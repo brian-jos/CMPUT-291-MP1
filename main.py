@@ -147,8 +147,8 @@ def unregistered_login():
         # get email input and check domain
         curr_email = input("\nEmail: ")
         while (len(curr_email) < 1 or len(curr_email) > 20 or \
-        _existing_value('users', 'email', curr_email)):
-                print("Invalid email length or email already exists.")
+               _existing_value('users', 'email', curr_email) or "@" not in curr_email):
+                print("Invalid email length, does not contain @, or email already exists.")
                 curr_email = input("Email: ")
 
         # name input and domain check
@@ -165,8 +165,9 @@ def unregistered_login():
 
         # gender input and domain check
         gender = input("Gender: ")
-        while (len(gender) != 1):
-                print("Invalid gender length.")
+        while (len(gender) != 1 or ("M" not in gender and "F" not in gender and \
+                                    "m" not in gender and "f" not in gender)):
+                print("Invalid gender length or input. (Enter M/F)")
                 gender = input("Gender: ")
 
         # password input and domain check
@@ -180,7 +181,7 @@ def unregistered_login():
         # insert new user into the database
         query = '''INSERT INTO users
                    VALUES ('{}', '{}', '{}', '{}', '{}');
-                   '''.format(curr_email, name, pwd, city, gender)
+                   '''.format(curr_email, name, pwd, city, gender.upper())
         c.execute(query)
         
         _close_sql(conn, c)
