@@ -4,14 +4,6 @@ import random # help generate a more unique IDs
 from getpass import getpass # only used to hide password input, source 2
 from datetime import datetime # only used to validate date input, source 3
 
-'''
-to do
-- add stricter error checking (ex: email and gender)
-- improve sql queries to be simpler 
-- improve sql query for system option 2 (task 2 on spec) to not have to remove NULL entries
-- try to find ways to break inputs or data
-'''
-
 # helper: creates an sqlite3 connection from database and returns its connections
 def _open_sql():
         database = sys.argv[1] # get database name from command line input        
@@ -222,7 +214,7 @@ def system_menu(curr_email):
         # still logged in, return 1 for login_status
         return 1;
 
-# system option 1: list products; improve query to not use distinct
+# system option 1: list products
 def list_products(curr_email):
         conn, c = _open_sql()
 
@@ -440,7 +432,7 @@ def list_product_sales(selected_pid, curr_email):
                 
         return;
 
-# system option 2: search for sales; improve sql query
+# system option 2: search for sales
 def search_sales(curr_email):
         # input keywords, creates list split by spaces
         keywords = input("\nKeyword(s) input (seperated by spaces): ").split()
@@ -527,7 +519,7 @@ def search_sales(curr_email):
         
         return;
 
-# sale selection: display sale selection menu and option prompt; improve sql query
+# sale selection: display sale selection menu and option prompt
 def sale_selection(selected_sid, curr_email):
         print("\nSelected: {}".format(selected_sid))
         print("Detailed information:")
@@ -696,7 +688,7 @@ def list_seller_sales(selected_sid, curr_email):
         return;
 
 # sale option 3: list reviews of seller
-def list_seller_reviews(selected_sid): # here
+def list_seller_reviews(selected_sid):
         conn, c = _open_sql()
 
         # task 3c, select seller's reviews
